@@ -1,0 +1,34 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>com.shimba.openeditors</id>
+
+    <name>Open Editors</name>
+
+    <vendor url="https://shimba.dev">Shimba</vendor>
+
+    <description><![CDATA[
+        <p>Shows currently open editor tabs in a persistent tool window panel,
+        similar to VSCode's Open Editors view.</p>
+        <ul>
+          <li><b>Persistent panel</b> — dockable tool window on the left side, always visible</li>
+          <li><b>Active file highlight</b> — the currently focused editor is highlighted automatically</li>
+          <li><b>Pinned tabs</b> — pinned files appear at the top with a pin icon; click to unpin</li>
+          <li><b>Close button</b> — hover any file to reveal the close (×) button</li>
+          <li><b>Drag &amp; drop reorder</b> — drag to rearrange within pinned or unpinned groups</li>
+          <li><b>File path display</b> — shows relative project path; toggle via the gear menu</li>
+          <li><b>Context menu</b> — right-click any file for the full editor tab context menu</li>
+          <li><b>Auto-scroll</b> — scrolls to keep the active file visible when switching tabs</li>
+        </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow
+                id="Open Editors"
+                anchor="left"
+                factoryClass="com.shimba.openeditors.OpenEditorsToolWindowFactory"
+                icon="/icons/pluginIcon.svg"
+        />
+    </extensions>
+</idea-plugin>
