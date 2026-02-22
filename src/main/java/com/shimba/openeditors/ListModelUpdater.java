@@ -7,69 +7,66 @@ import java.util.List;
 
 final class ListModelUpdater {
 
-    private final JBList<OpenEditorEntry> fileList;
-    private final DefaultListModel<OpenEditorEntry> listModel;
-    private final OpenEditorsService service;
-    private final OpenEditorsListState state;
+    private final JBList<ListItem> fileList;
+    private final DefaultListModel<ListItem> listModel;
+    private final OpenEditorsDataService dataService;
 
-    ListModelUpdater(JBList<OpenEditorEntry> fileList, DefaultListModel<OpenEditorEntry> listModel, OpenEditorsService service,
-        OpenEditorsListState state) {
+    ListModelUpdater(JBList<ListItem> fileList, DefaultListModel<ListItem> listModel, OpenEditorsDataService dataService) {
         this.fileList = fileList;
         this.listModel = listModel;
-        this.service = service;
-        this.state = state;
+        this.dataService = dataService;
     }
 
     void refresh() {
-        List<OpenEditorEntry> entries = service.getOpenEditors();
+        List<EditorGroup> groups = dataService.getEditorGroups();
+        List<ListItem> items = dataService.buildListItems(groups);
 
-        if (isListUnchanged(entries)) {
+        if (isListUnchanged(items)) {
             return;
         }
 
-        state.setPinnedCount((int) entries.stream().filter(OpenEditorEntry::pinned).count());
-        updateModel(entries);
-        scrollToActive(entries);
+        updateModel(items);
+        scrollToActive(items);
         fileList.clearSelection();
     }
 
     void forceRefresh() {
-        List<OpenEditorEntry> entries = service.getOpenEditors();
-        state.setPinnedCount((int) entries.stream().filter(OpenEditorEntry::pinned).count());
-        updateModel(entries);
-        scrollToActive(entries);
+        List<EditorGroup> groups = dataService.getEditorGroups();
+        List<ListItem> items = dataService.buildListItems(groups);
+        updateModel(items);
+        scrollToActive(items);
         fileList.clearSelection();
     }
 
-    private boolean isListUnchanged(List<OpenEditorEntry> entries) {
-        if (listModel.getSize() != entries.size()) {
+    private boolean isListUnchanged(List<ListItem> items) {
+        if (listModel.getSize() != items.size()) {
             return false;
         }
 
         for (int i = 0; i < listModel.getSize(); i++) {
-            OpenEditorEntry existing = listModel.getElementAt(i);
-            OpenEditorEntry incoming = entries.get(i);
+            ListItem existing = listModel.getElementAt(i);
+            ListItem incoming = items.get(i);
 
-            if (!existing.file().equals(incoming.file()) || existing.pinned() != incoming.pinned()
-                || existing.active() != incoming.active()) {
+            if (!existing.structurallyEquals(incoming)) {
                 return false;
             }
         }
+
         return true;
     }
 
-    private void updateModel(List<OpenEditorEntry> entries) {
+    private void updateModel(List<ListItem> items) {
         int oldSize = listModel.getSize();
-        int newSize = entries.size();
+        int newSize = items.size();
         int common = Math.min(oldSize, newSize);
 
         for (int i = 0; i < common; i++) {
-            listModel.set(i, entries.get(i));
+            listModel.set(i, items.get(i));
         }
 
         if (newSize > oldSize) {
             for (int i = oldSize; i < newSize; i++) {
-                listModel.addElement(entries.get(i));
+                listModel.addElement(items.get(i));
             }
         } else if (oldSize > newSize) {
             for (int i = oldSize - 1; i >= newSize; i--) {
@@ -78,9 +75,9 @@ final class ListModelUpdater {
         }
     }
 
-    private void scrollToActive(List<OpenEditorEntry> entries) {
-        for (int i = 0; i < entries.size(); i++) {
-            if (entries.get(i).active()) {
+    private void scrollToActive(List<ListItem> items) {
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i) instanceof ListItem.FileEntry fe && fe.active()) {
                 int idx = i;
                 SwingUtilities.invokeLater(() -> fileList.ensureIndexIsVisible(idx));
                 return;

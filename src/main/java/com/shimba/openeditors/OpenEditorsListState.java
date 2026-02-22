@@ -2,20 +2,12 @@ package com.shimba.openeditors;
 
 final class OpenEditorsListState {
 
-    private int pinnedCount;
     private int hoveredCellIndex = -1;
     private boolean actionButtonHovered;
     private int dropTarget = -1;
     private boolean dragging;
     private boolean showFilePath = true;
-
-    int getPinnedCount() {
-        return pinnedCount;
-    }
-
-    void setPinnedCount(int pinnedCount) {
-        this.pinnedCount = pinnedCount;
-    }
+    private boolean suppressNextClick;
 
     int getHoveredCellIndex() {
         return hoveredCellIndex;
@@ -55,5 +47,13 @@ final class OpenEditorsListState {
 
     void setShowFilePath(boolean showFilePath) {
         this.showFilePath = showFilePath;
+    }
+
+    boolean isSuppressNextClick() {
+        return suppressNextClick;
+    }
+
+    void setSuppressNextClick(boolean suppressNextClick) {
+        this.suppressNextClick = suppressNextClick;
     }
 }

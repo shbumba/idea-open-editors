@@ -17,52 +17,77 @@ import java.util.Set;
 
 final class OpenEditorsListener {
 
-    private static final int POLL_INTERVAL_MS = 500;
+    private static final int POLL_INTERVAL_MS = 2000;
+    private static final int DEBOUNCE_MS = 50;
     private static final Set<String> PIN_ACTION_IDS = Set.of("PinActiveTab", "PinActiveTabToggle", "PinActiveEditorTab");
 
-    private final Alarm alarm;
+    private final Alarm pollAlarm;
+    private final Alarm debounceAlarm;
+    private final Runnable onUpdate;
 
     OpenEditorsListener(Project project, Disposable parentDisposable, Runnable onUpdate) {
-        Runnable invokeUpdate = () -> ApplicationManager.getApplication().invokeLater(onUpdate);
+        this.onUpdate = onUpdate;
+        this.pollAlarm = new Alarm(parentDisposable);
+        this.debounceAlarm = new Alarm(parentDisposable);
 
-        project.getMessageBus().connect(parentDisposable)
-            .subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
+        subscribeToEditorEvents(project, parentDisposable);
+        subscribeToActionEvents(parentDisposable);
+        schedulePoll();
+    }
+
+    private void subscribeToEditorEvents(Project project, Disposable parentDisposable) {
+        project.getMessageBus().connect(parentDisposable).subscribe(
+            FileEditorManagerListener.FILE_EDITOR_MANAGER, new FileEditorManagerListener() {
                 @Override
                 public void fileOpened(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
-                    invokeUpdate.run();
+                    scheduleRefresh();
                 }
 
                 @Override
                 public void fileClosed(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
-                    invokeUpdate.run();
+                    scheduleRefresh();
                 }
 
                 @Override
-                public void selectionChanged(@NotNull FileEditorManagerEvent event) {
-                    invokeUpdate.run();
+                public void selectionChanged(
+                    @NotNull FileEditorManagerEvent event
+                ) {
+                    scheduleRefresh();
                 }
-            });
-
-        ApplicationManager.getApplication().getMessageBus().connect(parentDisposable)
-            .subscribe(AnActionListener.TOPIC, new AnActionListener() {
-                @Override
-                public void afterActionPerformed(@NotNull AnAction action, @NotNull AnActionEvent event,
-                    @NotNull com.intellij.openapi.actionSystem.AnActionResult result) {
-                    String id = event.getActionManager().getId(action);
-                    if (id != null && PIN_ACTION_IDS.contains(id)) {
-                        invokeUpdate.run();
-                    }
-                }
-            });
-
-        alarm = new Alarm(parentDisposable);
-        schedulePoll(onUpdate);
+            }
+        );
     }
 
-    private void schedulePoll(Runnable onUpdate) {
-        alarm.addRequest(() -> {
-            onUpdate.run();
-            schedulePoll(onUpdate);
-        }, POLL_INTERVAL_MS);
+    private void subscribeToActionEvents(Disposable parentDisposable) {
+        ApplicationManager.getApplication().getMessageBus().connect(parentDisposable).subscribe(
+            AnActionListener.TOPIC, new AnActionListener() {
+                @Override
+                public void afterActionPerformed(
+                    @NotNull AnAction action,
+                    @NotNull AnActionEvent event,
+                    @NotNull com.intellij.openapi.actionSystem.AnActionResult result
+                ) {
+                    String id = event.getActionManager().getId(action);
+
+                    if (id != null && PIN_ACTION_IDS.contains(id)) {
+                        scheduleRefresh();
+                    }
+                }
+            }
+        );
+    }
+
+    private void scheduleRefresh() {
+        debounceAlarm.cancelAllRequests();
+        debounceAlarm.addRequest(() -> ApplicationManager.getApplication().invokeLater(onUpdate), DEBOUNCE_MS);
+    }
+
+    private void schedulePoll() {
+        pollAlarm.addRequest(
+            () -> {
+                onUpdate.run();
+                schedulePoll();
+            }, POLL_INTERVAL_MS
+        );
     }
 }

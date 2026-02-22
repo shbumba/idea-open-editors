@@ -1,10 +1,10 @@
 plugins {
     id("java")
-    id("org.jetbrains.intellij.platform") version "2.5.0"
+    id("org.jetbrains.intellij.platform") version "2.11.0"
 }
 
 group = "com.shimba"
-version = "1.0"
+version = "1.11"
 
 repositories {
     mavenCentral()
@@ -26,6 +26,8 @@ dependencies {
 }
 
 intellijPlatform {
+    buildSearchableOptions = false
+
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "251"
@@ -33,14 +35,19 @@ intellijPlatform {
 
         changeNotes = """
       <ul>
-        <li>Persistent open-editors panel dockable on the left side</li>
-        <li>Active file is highlighted automatically as you switch tabs</li>
-        <li>Pinned tabs appear at the top with a pin icon; click to unpin</li>
-        <li>Hover any file to reveal the close (×) button</li>
-        <li>Drag &amp; drop to rearrange files within pinned or unpinned groups</li>
-        <li>Toggle relative file path display via the gear menu</li>
-        <li>Right-click any file for the full editor tab context menu</li>
-        <li>Auto-scrolls to keep the active file visible when switching tabs</li>
+        <li><b>Persistent panel</b> — dockable tool window on the left side, always visible</li>
+        <li><b>Active file highlight</b> — the currently focused editor is highlighted automatically</li>
+        <li><b>Split view & multi-window support</b> — displays tabs from all editor contexts: main window, split panes, and floating/detached windows</li>
+        <li><b>Window grouping</b> — tabs are grouped by their source editor window with section headers (Main Editor, Split View, Window 2, etc.); single-window mode shows a flat list</li>
+        <li><b>Per-window operations</b> — click, close, and context menu actions target on the editor window</li>
+        <li><b>Pinned tabs</b> — pinned files appear at the top of each group with a pin icon; click the pin to unpin</li>
+        <li><b>Close button</b> — hover any file to reveal the close (×) button</li>
+        <li><b>Drag & drop reorder</b> — drag items to rearrange tab order within pinned or unpinned groups; constrained to the same editor window</li>
+        <li><b>Bidirectional tab sync</b> — reordering in the panel writes back to the IDE tab bar and vice versa</li>
+        <li><b>File colors</b> — inherits scope-based background colors and VCS status foreground colors from the IDE</li>
+        <li><b>File path display</b> — shows the relative project path below the file name; toggle via the gear menu</li>
+        <li><b>Context menu</b> — right-click any file to access the full editor tab context menu</li>
+        <li><b>Auto-scroll</b> — scrolls to keep the active file visible when switching tabs</li>
       </ul>
     """.trimIndent()
     }
@@ -51,5 +58,6 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
+        options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
     }
 }

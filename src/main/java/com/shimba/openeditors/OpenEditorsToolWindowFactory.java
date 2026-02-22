@@ -20,32 +20,43 @@ public class OpenEditorsToolWindowFactory implements ToolWindowFactory, DumbAwar
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        OpenEditorsService service = project.getService(OpenEditorsService.class);
+        OpenEditorsDataService dataService = project.getService(OpenEditorsDataService.class);
+        OpenEditorsActionService actionService = project.getService(OpenEditorsActionService.class);
 
         OpenEditorsListState state = new OpenEditorsListState();
-        boolean showFilePath = PropertiesComponent.getInstance(project)
-            .getBoolean(ToggleFilePathAction.PROP_KEY, true);
+        boolean showFilePath = PropertiesComponent.getInstance(project).getBoolean(ToggleFilePathAction.PROP_KEY, true);
         state.setShowFilePath(showFilePath);
 
-        DefaultListModel<OpenEditorEntry> listModel = new DefaultListModel<>();
-        JBList<OpenEditorEntry> fileList = new JBList<>(listModel);
+        DefaultListModel<ListItem> listModel = new DefaultListModel<>();
+        JBList<ListItem> fileList = new JBList<>(listModel) {
+            @Override
+            public boolean getScrollableTracksViewportWidth() {
+                return true;
+            }
+        };
         fileList.setCellRenderer(new OpenEditorCellRenderer(project, state));
+        fileList.setFixedCellHeight(-1);
 
-        ListModelUpdater updater = new ListModelUpdater(fileList, listModel, service, state);
+        ListModelUpdater updater = new ListModelUpdater(fileList, listModel, dataService);
 
         DefaultActionGroup gearGroup = new DefaultActionGroup();
         gearGroup.add(new ToggleFilePathAction(project, state, updater::forceRefresh));
         toolWindow.setAdditionalGearActions(gearGroup);
 
-        new OpenEditorsMouseHandler(fileList, listModel, service, state, project, updater::refresh).install();
+        Runnable refresh = updater::refresh;
+
+        new ClickHandler(fileList, listModel, actionService, state, refresh).install();
+        new HoverHandler(fileList, listModel, state).install();
+        new DragHandler(fileList, listModel, actionService, state, refresh).install();
+        new ContextMenuHandler(fileList, listModel, project).install();
 
         fileList.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent e) {
-                int size = listModel.getSize();
-
-                for (int i = 0; i < size; i++) {
-                    listModel.set(i, listModel.get(i));
+                // BasicListUI caches cell heights and only re-measures on
+                // model change events — a single set triggers full re-layout
+                if (listModel.getSize() > 0) {
+                    listModel.set(0, listModel.get(0));
                 }
             }
         });
@@ -55,7 +66,7 @@ public class OpenEditorsToolWindowFactory implements ToolWindowFactory, DumbAwar
         Content content = contentFactory.createContent(scrollPane, "", false);
         toolWindow.getContentManager().addContent(content);
 
-        new OpenEditorsListener(project, toolWindow.getDisposable(), updater::refresh);
+        new OpenEditorsListener(project, toolWindow.getDisposable(), refresh);
 
         updater.refresh();
     }
